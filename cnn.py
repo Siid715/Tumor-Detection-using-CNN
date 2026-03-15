@@ -14,33 +14,31 @@ from torchvision import transforms
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, roc_auc_score, confusion_matrix, classification_report
 
-# ===================== الإعدادات =====================
+# ===================== ا=====================
 @dataclass
 class Config:
-    data_dir: str = r"BR35Hdataset"   # <-- عدّل هذا للمجلد الذي يحوي yes/ و no/
+    data_dir: str = r"BR35Hdataset"  
     out_dir: str  = "./artifacts_cnn_baseline_low"
 
-    img_size: int = 128               # تصغير الإدخال يقلّل قدرة النموذج
+    img_size: int = 128               #
     batch_size: int = 32
     num_workers: int = 2
     seed: int = 42
 
-    # تقسيم
+
     test_size: float = 0.20
     val_size: float  = 0.10
 
-    # تدريب (قصير ومتحفّظ لعدم الوصول لأداء عالٍ جداً)
-    epochs: int = 20                   # عدد عصور قليل
+    epochs: int = 20                
     lr: float = 1e-3
     weight_decay: float = 1e-4
-    patience: int = 7                 # إيقاف مبكر
-    dropout: float = 0.3              # تزيد من صرامة التعلّم
-
+    patience: int = 7                 # 
+    dropout: float = 0.3              #
 cfg = Config()
 os.makedirs(cfg.out_dir, exist_ok=True)
 random.seed(cfg.seed); np.random.seed(cfg.seed); torch.manual_seed(cfg.seed)
 
-# ===================== الداتا =====================
+# ===================== ال =====================
 def list_images_by_class(root_dir: str) -> Tuple[List[str], List[int], List[str]]:
     classes = ["no", "yes"]
     paths, labels = [], []
@@ -62,21 +60,18 @@ class ImageListDataset(Dataset):
         p = self.paths[idx]; y = self.labels[idx]
         with Image.open(p) as im:
             im = im.convert("RGB")
-            x = self.transform(im)    # فقط Resize + ToTensor (بدون Normalize/Aug)
+            x = self.transform(im)    # Resize + ToTensor( Normalize/Aug)
         return x, y
 
 def build_transforms(img_size: int):
     return transforms.Compose([
         transforms.Resize((img_size, img_size)),
-        transforms.ToTensor(),       # بدون Normalize
+        transforms.ToTensor(),       #  Normalize
     ])
 
-# ===================== نموذج CNN صغير =====================
+# =====================م CNN  =====================
 class SmallCNN(nn.Module):
-    """
-    شبكة صغيرة عمدًا (3 بلوكات فقط) لتكون baseline أقل من الهجين.
-    المدخل: 3x128x128 → مخرجات ثنائية.
-    """
+    
     def __init__(self, num_classes=2, p_drop=0.3):
         super().__init__()
         self.features = nn.Sequential(
@@ -108,7 +103,7 @@ class SmallCNN(nn.Module):
         x = self.classifier(x)
         return x
 
-# ===================== تدريب/تقييم =====================
+
 def get_device():
     return torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 
@@ -170,9 +165,8 @@ def main():
     dl_test  = DataLoader(ImageListDataset(X_test, y_test, tfm), batch_size=cfg.batch_size, shuffle=False,
                           num_workers=cfg.num_workers, pin_memory=pin_mem)
 
-    # نموذج صغير من الصفر
     model = SmallCNN(num_classes=2, p_drop=cfg.dropout).to(device)
-    # ملاحظة: لا class weights ولا Normalize — baseline بسيط ومنخفض
+   
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
@@ -199,7 +193,7 @@ def main():
                 print(">> Early stopping.")
                 break
 
-    # اختبار بالأفضل
+
     print("\n=== TEST ===")
     ckpt = torch.load(best_path, map_location=device); model.load_state_dict(ckpt["model"])
     _, te_acc, te_f1, te_auc, y_true, y_pred = eval_model(model, dl_test, device, criterion)
